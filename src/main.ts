@@ -5,10 +5,14 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const corsOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:3001,http://localhost:3011')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
   // Enable CORS
   app.enableCors({
-    origin: ['http://localhost:3001'], // SuperAdmin frontend
+    origin: corsOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
     allowedHeaders: 'Content-Type,Authorization',
