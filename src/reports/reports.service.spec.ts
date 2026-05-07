@@ -4,12 +4,22 @@ import { PrismaService } from '../prisma/prisma.service';
 
 describe('ReportsService', () => {
   let service: ReportsService;
-  let prisma: { tenant: { findUnique: jest.Mock } };
+  let prisma: {
+    tenant: { findUnique: jest.Mock };
+    auditLog: { count: jest.Mock };
+    supportTicket: { count: jest.Mock };
+  };
 
   beforeEach(async () => {
     prisma = {
       tenant: {
         findUnique: jest.fn(),
+      },
+      auditLog: {
+        count: jest.fn(),
+      },
+      supportTicket: {
+        count: jest.fn(),
       },
     };
 
@@ -33,11 +43,15 @@ describe('ReportsService', () => {
       lastActiveAt: new Date('2025-06-01T00:00:00.000Z'),
       usageSummary: { metricsLogged: 10 },
     });
+    prisma.auditLog.count.mockResolvedValue(3);
+    prisma.supportTicket.count.mockResolvedValue(2);
 
     const result = await service.tenantSummary('tenant_1');
     expect(result.tenant.id).toBe('tenant_1');
     expect(result.usage.metricsLogged).toBe(10);
     expect(result.usage.streak).toBe(0);
+    expect(result.activity.auditEvents).toBe(3);
+    expect(result.activity.supportTickets).toBe(2);
   });
 
   it('throws if tenant missing', async () => {

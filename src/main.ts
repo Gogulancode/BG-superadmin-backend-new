@@ -41,6 +41,9 @@ async function bootstrap() {
     .addTag('Audit', 'Platform audit trail')
     .addTag('Templates', 'Global template library')
     .addTag('Reports', 'Cross-tenant reporting')
+    .addTag('Ops', 'Operational health, telemetry, and rate-limit snapshots')
+    .addTag('Settings', 'Platform settings')
+    .addTag('Users', 'Cross-tenant user directory')
     .build();
   const doc = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, doc);

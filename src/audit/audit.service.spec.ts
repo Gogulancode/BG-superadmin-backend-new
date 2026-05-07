@@ -5,13 +5,14 @@ import { AuditEventType } from '@prisma/client';
 
 describe('AuditService', () => {
   let service: AuditService;
-  let prisma: { auditLog: { create: jest.Mock; findMany: jest.Mock } };
+  let prisma: { auditLog: { create: jest.Mock; findMany: jest.Mock; count: jest.Mock } };
 
   beforeEach(async () => {
     prisma = {
       auditLog: {
         create: jest.fn(),
         findMany: jest.fn(),
+        count: jest.fn(),
       },
     };
 
@@ -44,6 +45,7 @@ describe('AuditService', () => {
 
   it('applies filters when listing events', async () => {
     prisma.auditLog.findMany.mockResolvedValue([]);
+    prisma.auditLog.count.mockResolvedValue(0);
 
     await service.findAll({
       tenantId: 'tenant_123',
@@ -62,6 +64,23 @@ describe('AuditService', () => {
         },
       },
       orderBy: { createdAt: 'desc' },
+      skip: 0,
+      take: 50,
+      include: {
+        tenant: {
+          select: { name: true },
+        },
+      },
+    });
+    expect(prisma.auditLog.count).toHaveBeenCalledWith({
+      where: {
+        tenantId: 'tenant_123',
+        eventType: AuditEventType.TENANT_CREATED,
+        createdAt: {
+          gte: new Date('2025-01-01T00:00:00.000Z'),
+          lte: new Date('2025-01-31T23:59:59.000Z'),
+        },
+      },
     });
   });
 });

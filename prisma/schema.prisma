@@ -91,6 +91,18 @@ model GlobalTemplate {
   @@map("global_templates")
 }
 
+model PlatformSettings {
+  id                String   @id @default("platform")
+  maintenanceMode   Boolean  @default(false)
+  defaultPlan       String   @default("STARTER")
+  maxTenantsPerPlan Json
+  features          Json
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
 model Tenant {
   id          String   @id @default(cuid())
   name        String
@@ -134,6 +146,7 @@ enum AuditEventType {
   TENANT_SUBSCRIPTION_UPDATED
   SUPPORT_TICKET_CREATED
   SUPPORT_TICKET_STATUS_CHANGED
+  SETTINGS_CHANGED
 }
 
 enum TemplateType {

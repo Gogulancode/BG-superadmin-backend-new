@@ -7,6 +7,9 @@ import { AuditModule } from './audit/audit.module';
 import { SupportModule } from './support/support.module';
 import { TemplatesModule } from './templates/templates.module';
 import { ReportsModule } from './reports/reports.module';
+import { OpsModule } from './ops/ops.module';
+import { SettingsModule } from './settings/settings.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -18,6 +21,9 @@ import { ReportsModule } from './reports/reports.module';
     SupportModule,
     TemplatesModule,
     ReportsModule,
+    OpsModule,
+    SettingsModule,
+    UsersModule,
   ],
   controllers: [],
   providers: [],
