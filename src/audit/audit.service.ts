@@ -26,22 +26,7 @@ export class AuditService {
   }
 
   async findAll(filters: AuditQueryDto) {
-    const where: any = {};
-    if (filters.tenantId) {
-      where.tenantId = filters.tenantId;
-    }
-    if (filters.eventType) {
-      where.eventType = filters.eventType;
-    }
-    if (filters.startDate || filters.endDate) {
-      where.createdAt = {};
-      if (filters.startDate) {
-        where.createdAt.gte = new Date(filters.startDate);
-      }
-      if (filters.endDate) {
-        where.createdAt.lte = new Date(filters.endDate);
-      }
-    }
+    const where = this.buildWhere(filters);
 
     const page = filters.page ?? 1;
     const pageSize = filters.pageSize ?? 50;
@@ -74,22 +59,7 @@ export class AuditService {
   }
 
   async exportCsv(filters: AuditQueryDto) {
-    const where: any = {};
-    if (filters.tenantId) {
-      where.tenantId = filters.tenantId;
-    }
-    if (filters.eventType) {
-      where.eventType = filters.eventType;
-    }
-    if (filters.startDate || filters.endDate) {
-      where.createdAt = {};
-      if (filters.startDate) {
-        where.createdAt.gte = new Date(filters.startDate);
-      }
-      if (filters.endDate) {
-        where.createdAt.lte = new Date(filters.endDate);
-      }
-    }
+    const where = this.buildWhere(filters);
 
     const logs = await this.prisma.auditLog.findMany({
       where,
@@ -118,5 +88,36 @@ export class AuditService {
     ].join('\n');
 
     return csvContent;
+  }
+
+  private buildWhere(filters: AuditQueryDto) {
+    const where: any = {};
+    if (filters.tenantId) {
+      where.tenantId = filters.tenantId;
+    }
+    if (filters.userId) {
+      where.actor = { contains: filters.userId, mode: 'insensitive' };
+    }
+    if (filters.eventType) {
+      where.eventType = filters.eventType;
+    }
+    if (filters.search) {
+      where.OR = [
+        { actor: { contains: filters.search, mode: 'insensitive' } },
+        { tenant: { name: { contains: filters.search, mode: 'insensitive' } } },
+        { tenant: { email: { contains: filters.search, mode: 'insensitive' } } },
+      ];
+    }
+    if (filters.startDate || filters.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) {
+        where.createdAt.gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        where.createdAt.lte = new Date(filters.endDate);
+      }
+    }
+
+    return where;
   }
 }

@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
-import { AuditService } from './audit.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { AuditEventType } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from './audit.service';
 
 describe('AuditService', () => {
   let service: AuditService;
@@ -47,22 +47,33 @@ describe('AuditService', () => {
     prisma.auditLog.findMany.mockResolvedValue([]);
     prisma.auditLog.count.mockResolvedValue(0);
 
-    await service.findAll({
+    const query = {
+      search: 'admin@example.com',
       tenantId: 'tenant_123',
+      userId: 'admin',
       eventType: AuditEventType.TENANT_CREATED,
       startDate: '2025-01-01T00:00:00.000Z',
       endDate: '2025-01-31T23:59:59.000Z',
-    });
+    };
+    const expectedWhere = {
+      tenantId: 'tenant_123',
+      actor: { contains: 'admin', mode: 'insensitive' },
+      eventType: AuditEventType.TENANT_CREATED,
+      createdAt: {
+        gte: new Date('2025-01-01T00:00:00.000Z'),
+        lte: new Date('2025-01-31T23:59:59.000Z'),
+      },
+      OR: [
+        { actor: { contains: 'admin@example.com', mode: 'insensitive' } },
+        { tenant: { name: { contains: 'admin@example.com', mode: 'insensitive' } } },
+        { tenant: { email: { contains: 'admin@example.com', mode: 'insensitive' } } },
+      ],
+    };
+
+    await service.findAll(query);
 
     expect(prisma.auditLog.findMany).toHaveBeenCalledWith({
-      where: {
-        tenantId: 'tenant_123',
-        eventType: AuditEventType.TENANT_CREATED,
-        createdAt: {
-          gte: new Date('2025-01-01T00:00:00.000Z'),
-          lte: new Date('2025-01-31T23:59:59.000Z'),
-        },
-      },
+      where: expectedWhere,
       orderBy: { createdAt: 'desc' },
       skip: 0,
       take: 50,
@@ -73,14 +84,7 @@ describe('AuditService', () => {
       },
     });
     expect(prisma.auditLog.count).toHaveBeenCalledWith({
-      where: {
-        tenantId: 'tenant_123',
-        eventType: AuditEventType.TENANT_CREATED,
-        createdAt: {
-          gte: new Date('2025-01-01T00:00:00.000Z'),
-          lte: new Date('2025-01-31T23:59:59.000Z'),
-        },
-      },
+      where: expectedWhere,
     });
   });
 });

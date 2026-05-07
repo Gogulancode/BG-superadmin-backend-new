@@ -4,10 +4,20 @@ import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class AuditQueryDto {
+  @ApiPropertyOptional({ description: 'Search by actor, tenant name, or tenant email' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @ApiPropertyOptional({ description: 'Filter by tenant ID' })
   @IsOptional()
   @IsString()
   tenantId?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by actor or user identifier' })
+  @IsOptional()
+  @IsString()
+  userId?: string;
 
   @ApiPropertyOptional({ description: 'Filter by event type', enum: AuditEventType })
   @IsOptional()
