@@ -1,0 +1,160 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  name                String
+  passwordHash        String
+  role                Role      @default(SUPER_ADMIN)
+  isActive            Boolean   @default(true)
+  // MFA fields
+  mfaSecret           String?
+  isMfaEnabled        Boolean   @default(false)
+  lastMfaVerifiedAt   DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  sessions SuperadminSession[]
+
+  @@map("users")
+}
+
+model SuperadminSession {
+  id             String    @id @default(cuid())
+  userId         String
+  userAgent      String
+  ipAddress      String
+  refreshTokenId String?   @unique
+  createdAt      DateTime  @default(now())
+  lastSeenAt     DateTime  @default(now())
+  revokedAt      DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshTokenId])
+  @@map("superadmin_sessions")
+}
+
+model SupportTicket {
+  id         String          @id @default(cuid())
+  tenantId   String
+  subject    String
+  message    String
+  status     SupportStatus   @default(OPEN)
+  priority   SupportPriority @default(MEDIUM)
+  assignedTo String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("support_tickets")
+}
+
+model AuditLog {
+  id        String          @id @default(cuid())
+  tenantId  String?
+  actor     String
+  eventType AuditEventType
+  metadata  Json?
+  createdAt DateTime        @default(now())
+
+  tenant    Tenant?         @relation(fields: [tenantId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model GlobalTemplate {
+  id          String       @id @default(cuid())
+  type        TemplateType
+  name        String
+  description String?
+  payload     Json
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("global_templates")
+}
+
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  status      TenantStatus @default(ACTIVE)
+  subscriptionStatus SubscriptionStatus @default(TRIAL)
+  planCode    String?
+  renewalDate DateTime?
+  trialEndsAt DateTime?
+  isOnboarded Boolean  @default(false)
+  onboardedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastActiveAt DateTime?
+  usageSummary Json?
+
+  supportTickets SupportTicket[]
+  auditLogs      AuditLog[]
+
+  @@map("tenants")
+}
+
+enum SupportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum SupportPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AuditEventType {
+  SUPERADMIN_LOGIN
+  TENANT_CREATED
+  TENANT_UPDATED
+  TENANT_ACTIVATED
+  TENANT_DEACTIVATED
+  TENANT_SUBSCRIPTION_UPDATED
+  SUPPORT_TICKET_CREATED
+  SUPPORT_TICKET_STATUS_CHANGED
+}
+
+enum TemplateType {
+  METRIC
+  OUTCOME
+  ACTIVITY
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum Role {
+  SUPER_ADMIN
+  STAFF
+}
+
+enum TenantStatus {
+  ACTIVE
+  INACTIVE
+}

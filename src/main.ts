@@ -1,0 +1,53 @@
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  // Enable CORS
+  app.enableCors({
+    origin: ['http://localhost:3001'], // SuperAdmin frontend
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+    allowedHeaders: 'Content-Type,Authorization',
+  });
+
+  app.setGlobalPrefix('api/v1');
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  // Swagger setup
+  const config = new DocumentBuilder()
+    .setTitle('BG Accountability SuperAdmin API')
+    .setDescription('REST API for SuperAdmin Dashboard - Tenant Management & Platform Analytics')
+    .setVersion('1.0.0')
+    .setContact('BG Accountability', 'https://bridgegaps.app', 'support@bridgegaps.app')
+    .addServer('http://localhost:3003', 'Local Development')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Enter JWT token (SUPER_ADMIN role required)',
+      },
+      'JWT-auth',
+    )
+    .addTag('Auth', 'SuperAdmin authentication and session management')
+    .addTag('Auth - MFA', 'Multi-factor authentication management')
+    .addTag('Tenants', 'Tenant lifecycle management')
+    .addTag('Dashboard', 'Platform-wide analytics & summary')
+    .addTag('Support', 'Cross-tenant support ticket management')
+    .addTag('Audit', 'Platform audit trail')
+    .addTag('Templates', 'Global template library')
+    .addTag('Reports', 'Cross-tenant reporting')
+    .build();
+  const doc = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, doc);
+
+  const port = process.env.PORT || 3003;
+  await app.listen(port);
+  console.log(`🚀 SuperAdmin API running on: http://localhost:${port}`);
+  console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
+}
+bootstrap();

@@ -1,0 +1,2721 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login payload or MFA required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "access_token": {
+                          "type": "string"
+                        },
+                        "refresh_token": {
+                          "type": "string"
+                        },
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "role": {
+                              "type": "string"
+                            },
+                            "isMfaEnabled": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "requiresMfa": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "tempToken": {
+                          "type": "string"
+                        },
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials"
+          }
+        },
+        "summary": "SuperAdmin login",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/mfa/login": {
+      "post": {
+        "operationId": "MfaController_mfaLogin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaLoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Full access and refresh tokens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "access_token": "jwt.token.here",
+                    "refresh_token": "refresh.token.here",
+                    "user": {
+                      "id": "user_123",
+                      "email": "admin@superadmin.com",
+                      "name": "Super Admin",
+                      "role": "SUPER_ADMIN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid temp token or MFA code"
+          }
+        },
+        "summary": "Complete MFA login with TOTP code",
+        "tags": [
+          "Auth - MFA"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "New access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "access_token": "new.jwt.token.here"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or expired token, or session revoked"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Refresh access token",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Logout and revoke current session",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/mfa/status": {
+      "get": {
+        "operationId": "MfaController_getStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get MFA status for current user",
+        "tags": [
+          "Auth - MFA"
+        ]
+      }
+    },
+    "/api/v1/auth/mfa/enroll": {
+      "post": {
+        "operationId": "MfaController_enroll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Secret and OTPAuth URL for QR code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaEnrollResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "MFA already enabled"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Start MFA enrollment - generates secret and QR code URL",
+        "tags": [
+          "Auth - MFA"
+        ]
+      }
+    },
+    "/api/v1/auth/mfa/verify": {
+      "post": {
+        "operationId": "MfaController_verify",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MFA enabled successfully"
+          },
+          "400": {
+            "description": "Invalid code or no pending enrollment"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Verify TOTP code and enable MFA",
+        "tags": [
+          "Auth - MFA"
+        ]
+      }
+    },
+    "/api/v1/auth/mfa/disable": {
+      "post": {
+        "operationId": "MfaController_disable",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaDisableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MFA disabled successfully"
+          },
+          "400": {
+            "description": "Invalid code or MFA not enabled"
+          },
+          "401": {
+            "description": "Invalid password"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Disable MFA (requires password and TOTP)",
+        "tags": [
+          "Auth - MFA"
+        ]
+      }
+    },
+    "/api/v1/auth/sessions": {
+      "get": {
+        "operationId": "SessionController_getSessions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "List all active sessions for current user",
+        "tags": [
+          "Auth - Sessions"
+        ]
+      },
+      "delete": {
+        "operationId": "SessionController_revokeAllSessions",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeAllSessionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sessions revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "message": "Revoked 3 session(s)",
+                    "count": 3
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Revoke all other sessions (optionally keep current)",
+        "tags": [
+          "Auth - Sessions"
+        ]
+      }
+    },
+    "/api/v1/auth/sessions/{id}": {
+      "delete": {
+        "operationId": "SessionController_revokeSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session revoked successfully"
+          },
+          "403": {
+            "description": "Cannot revoke another user's session"
+          },
+          "404": {
+            "description": "Session not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Revoke a specific session",
+        "tags": [
+          "Auth - Sessions"
+        ]
+      }
+    },
+    "/api/v1/superadmin/audit": {
+      "get": {
+        "operationId": "AuditController_findAll",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by tenant ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventType",
+            "required": false,
+            "in": "query",
+            "description": "Filter by event type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SUPERADMIN_LOGIN",
+                "TENANT_CREATED",
+                "TENANT_UPDATED",
+                "TENANT_ACTIVATED",
+                "TENANT_DEACTIVATED",
+                "TENANT_SUBSCRIPTION_UPDATED",
+                "SUPPORT_TICKET_CREATED",
+                "SUPPORT_TICKET_STATUS_CHANGED"
+              ]
+            }
+          },
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "description": "Filter events created after this ISO date",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "description": "Filter events created before this ISO date",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (1-indexed)",
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "default": 50,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated audit events (descending by createdAt)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "data": [
+                      {
+                        "id": "audit_123",
+                        "tenantId": "tenant_123",
+                        "actor": "SUPER_ADMIN:admin@superadmin.com",
+                        "eventType": "TENANT_CREATED",
+                        "metadata": {
+                          "tenantName": "Acme Corp"
+                        },
+                        "createdAt": "2025-06-01T12:34:56.000Z",
+                        "tenant": {
+                          "name": "Acme Corp"
+                        }
+                      }
+                    ],
+                    "meta": {
+                      "page": 1,
+                      "pageSize": 50,
+                      "total": 100,
+                      "totalPages": 2
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "List audit log events with pagination",
+        "tags": [
+          "Audit"
+        ]
+      }
+    },
+    "/api/v1/superadmin/audit/export": {
+      "get": {
+        "operationId": "AuditController_exportCsv",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by tenant ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventType",
+            "required": false,
+            "in": "query",
+            "description": "Filter by event type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SUPERADMIN_LOGIN",
+                "TENANT_CREATED",
+                "TENANT_UPDATED",
+                "TENANT_ACTIVATED",
+                "TENANT_DEACTIVATED",
+                "TENANT_SUBSCRIPTION_UPDATED",
+                "SUPPORT_TICKET_CREATED",
+                "SUPPORT_TICKET_STATUS_CHANGED"
+              ]
+            }
+          },
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "description": "Filter events created after this ISO date",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "description": "Filter events created before this ISO date",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (1-indexed)",
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "default": 50,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV file download"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Export audit logs as CSV",
+        "tags": [
+          "Audit"
+        ]
+      }
+    },
+    "/api/v1/superadmin/tenants": {
+      "get": {
+        "operationId": "TenantsController_listTenants",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search by name or email",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "INACTIVE"
+              ]
+            }
+          },
+          {
+            "name": "subscriptionStatus",
+            "required": false,
+            "in": "query",
+            "description": "Filter by subscription status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "TRIAL",
+                "ACTIVE",
+                "PAST_DUE",
+                "CANCELED"
+              ]
+            }
+          },
+          {
+            "name": "planCode",
+            "required": false,
+            "in": "query",
+            "description": "Filter by plan code",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isOnboarded",
+            "required": false,
+            "in": "query",
+            "description": "Filter by onboarding status",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (1-indexed)",
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated tenant collection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "data": [
+                      {
+                        "id": "tenant_123",
+                        "name": "Acme Corp",
+                        "email": "owner@acme.com",
+                        "status": "ACTIVE",
+                        "isOnboarded": true,
+                        "onboardedAt": "2025-05-02T12:00:00.000Z",
+                        "createdAt": "2025-05-01T12:34:56.000Z",
+                        "updatedAt": "2025-05-02T12:34:56.000Z",
+                        "lastActiveAt": "2025-05-04T09:15:00.000Z"
+                      }
+                    ],
+                    "meta": {
+                      "page": 1,
+                      "pageSize": 20,
+                      "total": 42,
+                      "totalPages": 3
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "List tenants with filters and pagination",
+        "tags": [
+          "Tenants"
+        ]
+      },
+      "post": {
+        "operationId": "TenantsController_createTenant",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created tenant record",
+            "schema": {
+              "example": {
+                "id": "tenant_456",
+                "name": "Nova LLC",
+                "email": "founder@nova.com",
+                "status": "ACTIVE",
+                "createdAt": "2025-05-10T08:00:00.000Z",
+                "updatedAt": "2025-05-10T08:00:00.000Z",
+                "lastActiveAt": null
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Create tenant",
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/api/v1/superadmin/tenants/{id}": {
+      "get": {
+        "operationId": "TenantsController_getTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get tenant details",
+        "tags": [
+          "Tenants"
+        ]
+      },
+      "patch": {
+        "operationId": "TenantsController_updateTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenantDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Update tenant details",
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/api/v1/superadmin/tenants/{id}/activate": {
+      "patch": {
+        "operationId": "TenantsController_activateTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Activate tenant",
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/api/v1/superadmin/tenants/{id}/deactivate": {
+      "patch": {
+        "operationId": "TenantsController_deactivateTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Deactivate tenant",
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/api/v1/superadmin/tenants/{id}/subscription": {
+      "patch": {
+        "operationId": "TenantsController_updateSubscription",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSubscriptionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Update tenant subscription fields",
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/api/v1/superadmin/tenants/{id}/stats": {
+      "get": {
+        "operationId": "TenantsController_getTenantStats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant stats payload",
+            "schema": {
+              "example": {
+                "tenantId": "tenant_123",
+                "tenantName": "Acme Corp",
+                "status": "ACTIVE",
+                "lastActiveAt": "2025-05-01T12:34:56.000Z",
+                "metricsLogged": 120,
+                "outcomesCompleted": 18,
+                "activitiesLogged": 45,
+                "salesLogged": 9,
+                "momentumScore": 78,
+                "streak": 6
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantStatsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get tenant usage stats",
+        "tags": [
+          "Tenants"
+        ]
+      }
+    },
+    "/api/v1/superadmin/dashboard/summary": {
+      "get": {
+        "operationId": "DashboardController_getSummary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Aggregated tenant metrics for dashboard cards",
+            "schema": {
+              "example": {
+                "totalTenants": 42,
+                "activeTenants": 30,
+                "inactiveTenants": 12,
+                "createdLast7Days": 5,
+                "activityTrend": [
+                  {
+                    "date": "2025-06-01",
+                    "activeTenants": 4
+                  },
+                  {
+                    "date": "2025-06-02",
+                    "activeTenants": 6
+                  }
+                ]
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "SuperAdmin dashboard summary",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/api/v1/superadmin/dashboard/support": {
+      "get": {
+        "operationId": "DashboardController_listSupportTickets",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Support tickets placeholder",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": []
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Support ticket list (optional)",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/api/v1/superadmin/dashboard/audit-log": {
+      "get": {
+        "operationId": "DashboardController_listAuditLogs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Audit logs placeholder",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": []
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Audit log list (optional)",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/api/v1/superadmin/support": {
+      "get": {
+        "operationId": "SupportController_listTickets",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by tenant ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "IN_PROGRESS",
+                "RESOLVED"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search subject or message for a substring",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SupportTicketDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "List support tickets",
+        "tags": [
+          "Support"
+        ]
+      },
+      "post": {
+        "operationId": "SupportController_createTicket",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSupportTicketDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportTicketDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Create a support ticket for a tenant",
+        "tags": [
+          "Support"
+        ]
+      }
+    },
+    "/api/v1/superadmin/support/{id}": {
+      "get": {
+        "operationId": "SupportController_getTicket",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportTicketDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ticket not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get support ticket details",
+        "tags": [
+          "Support"
+        ]
+      }
+    },
+    "/api/v1/superadmin/support/{id}/status": {
+      "patch": {
+        "operationId": "SupportController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSupportStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportTicketDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ticket not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Update support ticket status",
+        "tags": [
+          "Support"
+        ]
+      }
+    },
+    "/api/v1/superadmin/support/{id}/assign": {
+      "patch": {
+        "operationId": "SupportController_assignAgent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignAgentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportTicketDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ticket not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Assign agent to support ticket",
+        "tags": [
+          "Support"
+        ]
+      }
+    },
+    "/api/v1/superadmin/templates": {
+      "get": {
+        "operationId": "TemplatesController_listTemplates",
+        "parameters": [
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "METRIC",
+                "OUTCOME",
+                "ACTIVITY"
+              ]
+            }
+          },
+          {
+            "name": "isActive",
+            "required": false,
+            "in": "query",
+            "description": "Filter by active status",
+            "schema": {
+              "example": true,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "List global templates",
+        "tags": [
+          "Templates"
+        ]
+      },
+      "post": {
+        "operationId": "TemplatesController_createTemplate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Create a new template",
+        "tags": [
+          "Templates"
+        ]
+      }
+    },
+    "/api/v1/superadmin/templates/{id}": {
+      "get": {
+        "operationId": "TemplatesController_getTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get template detail",
+        "tags": [
+          "Templates"
+        ]
+      },
+      "patch": {
+        "operationId": "TemplatesController_updateTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTemplateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Update template metadata",
+        "tags": [
+          "Templates"
+        ]
+      },
+      "delete": {
+        "operationId": "TemplatesController_deleteTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Deactivate template",
+        "tags": [
+          "Templates"
+        ]
+      }
+    },
+    "/api/v1/superadmin/templates/{id}/duplicate": {
+      "post": {
+        "operationId": "TemplatesController_duplicateTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Duplicate an existing template",
+        "tags": [
+          "Templates"
+        ]
+      }
+    },
+    "/api/v1/superadmin/reports/tenant/{id}/summary": {
+      "get": {
+        "operationId": "ReportsController_tenantSummary",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "description": "Start date for report range (ISO date)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "description": "End date for report range (ISO date)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantReportDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Generate tenant summary report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/superadmin/reports/tenant/{id}/export": {
+      "get": {
+        "operationId": "ReportsController_exportTenantReport",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "description": "Start date for report range (ISO date)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "description": "End date for report range (ISO date)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV file download"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Export tenant report as CSV",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/superadmin/reports/platform/summary": {
+      "get": {
+        "operationId": "ReportsController_platformSummary",
+        "parameters": [
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "description": "Start date for report range (ISO date)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "description": "End date for report range (ISO date)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Platform KPIs and charts data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "kpis": {
+                      "totalTenants": 42,
+                      "activeTenants": 30,
+                      "totalRevenue": 125000,
+                      "averageMomentum": 72
+                    },
+                    "charts": {
+                      "tenantGrowth": [],
+                      "revenueByPlan": [],
+                      "activityTrend": []
+                    },
+                    "generatedAt": "2025-06-01T12:00:00.000Z"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Generate platform-wide summary report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/superadmin/reports/platform/export": {
+      "get": {
+        "operationId": "ReportsController_exportPlatformReport",
+        "parameters": [
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "description": "Start date for report range (ISO date)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "description": "End date for report range (ISO date)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV file download"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Export platform report as CSV",
+        "tags": [
+          "Reports"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "BG Accountability SuperAdmin API",
+    "description": "REST API for the BG Accountability Platform - SuperAdmin Services.\n\n## Overview\nThis API provides administrative capabilities for managing the multi-tenant platform.\nAccess is restricted to users with the `SUPER_ADMIN` role.\n\n## Authentication\nAll endpoints (except login) require a valid JWT Bearer token.\n- Login via `POST /api/v1/auth/login`\n- Include token in header: `Authorization: Bearer <token>`\n- Refresh tokens via `POST /api/v1/auth/refresh`\n\n## Multi-Factor Authentication (MFA)\nSuperAdmin accounts require MFA for enhanced security.\n- If MFA is enabled, login returns a `tempToken`\n- Complete MFA via `POST /api/v1/auth/mfa/login` with tempToken + TOTP code\n- MFA can be managed via `/api/v1/auth/mfa/*` endpoints\n\n## Session Management\n- View active sessions: `GET /api/v1/auth/sessions`\n- Revoke sessions: `DELETE /api/v1/auth/sessions/:id`\n\n## Rate Limiting\n- Default: 100 requests per minute per IP\n- Auth endpoints: 10 requests per minute per IP\n\n## Error Format\nAll errors follow: `{ success: false, message: string, code?: string, details?: object }`\n\n## Pagination\nPaginated endpoints use: `{ items: T[], total: number, page: number, pageSize: number }`\n",
+    "version": "1.0.0",
+    "contact": {
+      "name": "BG Accountability",
+      "url": "https://bridgegaps.app",
+      "email": "support@bridgegaps.app"
+    },
+    "license": {
+      "name": "Proprietary",
+      "url": ""
+    }
+  },
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Authentication, MFA, and session management"
+    },
+    {
+      "name": "Auth - MFA",
+      "description": "Multi-factor authentication management"
+    },
+    {
+      "name": "Tenants",
+      "description": "Tenant lifecycle management"
+    },
+    {
+      "name": "Dashboard",
+      "description": "Platform-wide analytics and KPIs"
+    },
+    {
+      "name": "Templates",
+      "description": "Global metric template library"
+    },
+    {
+      "name": "Support",
+      "description": "Support ticket management across all tenants"
+    },
+    {
+      "name": "Audit",
+      "description": "Platform audit trail and activity logs"
+    },
+    {
+      "name": "Reports",
+      "description": "Cross-tenant reporting and analytics"
+    }
+  ],
+  "servers": [
+    {
+      "url": "http://localhost:3003",
+      "description": "Local Development"
+    },
+    {
+      "url": "https://superadmin-api.bridgegaps.app",
+      "description": "Production"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "JWT-auth": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "description": "Enter your JWT access token (SUPER_ADMIN role required)"
+      }
+    },
+    "schemas": {
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "admin@superadmin.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "superpassword123"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "MfaLoginDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "6-digit TOTP code",
+            "example": "123456"
+          },
+          "tempToken": {
+            "type": "string",
+            "description": "Temporary token from initial login"
+          }
+        },
+        "required": [
+          "code",
+          "tempToken"
+        ]
+      },
+      "MfaStatusDto": {
+        "type": "object",
+        "properties": {
+          "isMfaEnabled": {
+            "type": "boolean",
+            "description": "Whether MFA is enabled for the user"
+          },
+          "lastMfaVerifiedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Last time MFA was verified"
+          }
+        },
+        "required": [
+          "isMfaEnabled"
+        ]
+      },
+      "MfaEnrollResponseDto": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "string",
+            "description": "Base32-encoded secret for manual entry"
+          },
+          "otpauthUrl": {
+            "type": "string",
+            "description": "OTPAuth URL for QR code generation"
+          },
+          "label": {
+            "type": "string",
+            "description": "Display label for authenticator app"
+          }
+        },
+        "required": [
+          "secret",
+          "otpauthUrl",
+          "label"
+        ]
+      },
+      "MfaCodeDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "6-digit TOTP code",
+            "example": "123456"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "MfaDisableDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "6-digit TOTP code",
+            "example": "123456"
+          },
+          "password": {
+            "type": "string",
+            "description": "Current password for verification"
+          }
+        },
+        "required": [
+          "code",
+          "password"
+        ]
+      },
+      "SessionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "userAgent": {
+            "type": "string",
+            "description": "User agent string from the client"
+          },
+          "ipAddress": {
+            "type": "string",
+            "description": "IP address of the client"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the session was created"
+          },
+          "lastSeenAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Last activity timestamp"
+          },
+          "revokedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the session was revoked (if applicable)"
+          },
+          "isCurrent": {
+            "type": "boolean",
+            "description": "Whether this is the current session"
+          }
+        },
+        "required": [
+          "id",
+          "userAgent",
+          "ipAddress",
+          "createdAt",
+          "lastSeenAt",
+          "isCurrent"
+        ]
+      },
+      "SessionListResponseDto": {
+        "type": "object",
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Total number of sessions"
+          }
+        },
+        "required": [
+          "sessions",
+          "total"
+        ]
+      },
+      "RevokeAllSessionsDto": {
+        "type": "object",
+        "properties": {
+          "keepCurrent": {
+            "type": "boolean",
+            "description": "Keep the current session active",
+            "default": true
+          }
+        }
+      },
+      "CreateTenantDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Company or freelancer name"
+          },
+          "email": {
+            "type": "string",
+            "description": "Primary contact email"
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ]
+      },
+      "TenantResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "tenant_123"
+          },
+          "name": {
+            "type": "string",
+            "example": "Acme Corp"
+          },
+          "email": {
+            "type": "string",
+            "example": "owner@acme.com"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ],
+            "example": "ACTIVE"
+          },
+          "subscriptionStatus": {
+            "type": "string",
+            "enum": [
+              "TRIAL",
+              "ACTIVE",
+              "PAST_DUE",
+              "CANCELED"
+            ],
+            "example": "TRIAL"
+          },
+          "planCode": {
+            "type": "object",
+            "example": "GROWTH",
+            "nullable": true
+          },
+          "renewalDate": {
+            "type": "object",
+            "example": "2025-07-01T00:00:00.000Z",
+            "nullable": true
+          },
+          "trialEndsAt": {
+            "type": "object",
+            "example": "2025-06-15T00:00:00.000Z",
+            "nullable": true
+          },
+          "isOnboarded": {
+            "type": "boolean",
+            "example": true,
+            "description": "Whether the tenant has completed onboarding"
+          },
+          "onboardedAt": {
+            "type": "object",
+            "example": "2025-05-02T14:30:00.000Z",
+            "nullable": true,
+            "description": "When onboarding was completed"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2025-05-01T12:34:56.000Z"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2025-05-15T08:20:00.000Z"
+          },
+          "lastActiveAt": {
+            "type": "object",
+            "example": "2025-05-15T08:20:00.000Z",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "status",
+          "subscriptionStatus",
+          "planCode",
+          "renewalDate",
+          "trialEndsAt",
+          "isOnboarded",
+          "onboardedAt",
+          "createdAt",
+          "updatedAt",
+          "lastActiveAt"
+        ]
+      },
+      "UpdateTenantDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Company or freelancer name"
+          },
+          "email": {
+            "type": "string",
+            "description": "Primary contact email"
+          }
+        }
+      },
+      "UpdateSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "subscriptionStatus": {
+            "type": "string",
+            "enum": [
+              "TRIAL",
+              "ACTIVE",
+              "PAST_DUE",
+              "CANCELED"
+            ]
+          },
+          "planCode": {
+            "type": "object",
+            "example": "GROWTH"
+          },
+          "renewalDate": {
+            "type": "object",
+            "description": "ISO date for next renewal"
+          },
+          "trialEndsAt": {
+            "type": "object",
+            "description": "ISO date for trial end"
+          }
+        }
+      },
+      "TenantStatsDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "example": "tenant_123"
+          },
+          "tenantName": {
+            "type": "string",
+            "example": "Acme Corp"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ],
+            "example": "ACTIVE"
+          },
+          "lastActiveAt": {
+            "type": "object",
+            "example": "2025-05-20T10:00:00.000Z",
+            "nullable": true
+          },
+          "metricsLogged": {
+            "type": "number",
+            "example": 120
+          },
+          "outcomesCompleted": {
+            "type": "number",
+            "example": 18
+          },
+          "activitiesLogged": {
+            "type": "number",
+            "example": 45
+          },
+          "salesLogged": {
+            "type": "number",
+            "example": 9
+          },
+          "momentumScore": {
+            "type": "number",
+            "example": 78
+          },
+          "streak": {
+            "type": "number",
+            "example": 6
+          }
+        },
+        "required": [
+          "tenantId",
+          "tenantName",
+          "status",
+          "lastActiveAt",
+          "metricsLogged",
+          "outcomesCompleted",
+          "activitiesLogged",
+          "salesLogged",
+          "momentumScore",
+          "streak"
+        ]
+      },
+      "ActivityPointDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2025-06-01"
+          },
+          "activeTenants": {
+            "type": "number",
+            "example": 12
+          }
+        },
+        "required": [
+          "date",
+          "activeTenants"
+        ]
+      },
+      "DashboardSummaryDto": {
+        "type": "object",
+        "properties": {
+          "totalTenants": {
+            "type": "number",
+            "example": 42
+          },
+          "activeTenants": {
+            "type": "number",
+            "example": 30
+          },
+          "inactiveTenants": {
+            "type": "number",
+            "example": 12
+          },
+          "createdLast7Days": {
+            "type": "number",
+            "example": 5
+          },
+          "activityTrend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityPointDto"
+            }
+          }
+        },
+        "required": [
+          "totalTenants",
+          "activeTenants",
+          "inactiveTenants",
+          "createdLast7Days",
+          "activityTrend"
+        ]
+      },
+      "SupportTicketDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "ticket_123"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "tenant_123"
+          },
+          "subject": {
+            "type": "string",
+            "example": "API outage"
+          },
+          "message": {
+            "type": "string",
+            "example": "Users cannot submit forms"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "IN_PROGRESS",
+              "RESOLVED"
+            ],
+            "example": "OPEN"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ],
+            "example": "MEDIUM"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2025-06-01T12:34:56.000Z"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2025-06-01T13:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "subject",
+          "message",
+          "status",
+          "priority",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateSupportTicketDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "description": "Tenant identifier",
+            "example": "tenant_123"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Ticket subject",
+            "example": "Unable to access dashboard"
+          },
+          "message": {
+            "type": "string",
+            "description": "Detailed message",
+            "example": "Dashboard throws 500 when loading metrics"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ],
+            "default": "MEDIUM"
+          }
+        },
+        "required": [
+          "tenantId",
+          "subject",
+          "message"
+        ]
+      },
+      "UpdateSupportStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "IN_PROGRESS",
+              "RESOLVED"
+            ],
+            "example": "IN_PROGRESS"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "AssignAgentDto": {
+        "type": "object",
+        "properties": {
+          "assignedTo": {
+            "type": "string",
+            "description": "Agent name or ID to assign",
+            "example": "support-agent-1"
+          }
+        },
+        "required": [
+          "assignedTo"
+        ]
+      },
+      "TemplateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "template_123"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "METRIC",
+              "OUTCOME",
+              "ACTIVITY"
+            ],
+            "example": "METRIC"
+          },
+          "name": {
+            "type": "string",
+            "example": "Weekly Revenue Metric"
+          },
+          "description": {
+            "type": "object",
+            "example": "Tracks weekly revenue numbers",
+            "nullable": true
+          },
+          "payload": {
+            "type": "object",
+            "example": {
+              "fields": [
+                "amount",
+                "notes"
+              ]
+            }
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2025-06-01T12:34:56.000Z"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2025-06-02T09:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "name",
+          "description",
+          "payload",
+          "isActive",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateTemplateDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "METRIC",
+              "OUTCOME",
+              "ACTIVITY"
+            ],
+            "example": "METRIC"
+          },
+          "name": {
+            "type": "string",
+            "description": "Template display name",
+            "example": "Weekly Revenue Metric"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional description",
+            "example": "Tracks revenue submitted every week"
+          },
+          "payload": {
+            "type": "object",
+            "description": "JSON payload describing template structure",
+            "example": {
+              "fields": [
+                "amount",
+                "notes"
+              ]
+            }
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Whether template is active",
+            "default": true
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "payload"
+        ]
+      },
+      "UpdateTemplateDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Template display name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Template description"
+          },
+          "payload": {
+            "type": "object",
+            "description": "Template payload",
+            "example": {
+              "fields": [
+                "amount"
+              ]
+            }
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Toggle template availability"
+          }
+        }
+      },
+      "TenantReportTenantDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "tenant_123"
+          },
+          "name": {
+            "type": "string",
+            "example": "Acme Corp"
+          },
+          "email": {
+            "type": "string",
+            "example": "owner@acme.com"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ],
+            "example": "ACTIVE"
+          },
+          "subscriptionStatus": {
+            "type": "string",
+            "enum": [
+              "TRIAL",
+              "ACTIVE",
+              "PAST_DUE",
+              "CANCELED"
+            ],
+            "example": "ACTIVE"
+          },
+          "planCode": {
+            "type": "object",
+            "example": "GROWTH",
+            "nullable": true
+          },
+          "renewalDate": {
+            "type": "object",
+            "example": "2025-07-01T00:00:00.000Z",
+            "nullable": true
+          },
+          "trialEndsAt": {
+            "type": "object",
+            "example": "2025-06-15T00:00:00.000Z",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "status",
+          "subscriptionStatus",
+          "planCode",
+          "renewalDate",
+          "trialEndsAt"
+        ]
+      },
+      "TenantReportUsageDto": {
+        "type": "object",
+        "properties": {
+          "metricsLogged": {
+            "type": "number",
+            "example": 120
+          },
+          "outcomesCompleted": {
+            "type": "number",
+            "example": 15
+          },
+          "activitiesLogged": {
+            "type": "number",
+            "example": 42
+          },
+          "salesLogged": {
+            "type": "number",
+            "example": 12
+          },
+          "momentumScore": {
+            "type": "number",
+            "example": 78
+          },
+          "streak": {
+            "type": "number",
+            "example": 5
+          },
+          "lastActiveAt": {
+            "type": "object",
+            "example": "2025-06-02T00:00:00.000Z",
+            "nullable": true
+          }
+        },
+        "required": [
+          "metricsLogged",
+          "outcomesCompleted",
+          "activitiesLogged",
+          "salesLogged",
+          "momentumScore",
+          "streak",
+          "lastActiveAt"
+        ]
+      },
+      "TenantReportDto": {
+        "type": "object",
+        "properties": {
+          "tenant": {
+            "$ref": "#/components/schemas/TenantReportTenantDto"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/TenantReportUsageDto"
+          }
+        },
+        "required": [
+          "tenant",
+          "usage"
+        ]
+      }
+    }
+  }
+}
