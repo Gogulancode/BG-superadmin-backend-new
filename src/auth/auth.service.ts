@@ -7,7 +7,7 @@ import { AuditEventType, Role } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { SessionService } from './sessions/session.service';
 import { MfaService } from './mfa/mfa.service';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 
 export interface LoginContext {
   userAgent: string;
@@ -66,7 +66,7 @@ export class AuthService {
   }
 
   private async completeLogin(user: any, context: LoginContext) {
-    const refreshTokenId = uuidv4();
+    const refreshTokenId = randomUUID();
     
     // Create session
     const session = await this.sessionService.createSession({
