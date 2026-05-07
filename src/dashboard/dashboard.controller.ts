@@ -25,9 +25,20 @@ export class DashboardController {
         activeTenants: 30,
         inactiveTenants: 12,
         createdLast7Days: 5,
+        totalUsers: 42,
+        totalMetrics: 120,
+        totalOutcomes: 18,
+        openSupportTickets: 3,
         activityTrend: [
           { date: '2025-06-01', activeTenants: 4 },
           { date: '2025-06-02', activeTenants: 6 },
+        ],
+        tenantGrowthSeries: [
+          { date: 'Jan', month: 'Jan', count: 12 },
+          { date: 'Feb', month: 'Feb', count: 18 },
+        ],
+        topTenantsByActivity: [
+          { tenantId: 'tenant_123', tenantName: 'Acme Corp', activityScore: 95 },
         ],
       },
     },
@@ -37,15 +48,15 @@ export class DashboardController {
     return this.dashboardService.getSummary();
   }
 
-  @ApiOperation({ summary: 'Support ticket list (optional)' })
-  @ApiOkResponse({ description: 'Support tickets placeholder', schema: { example: [] } })
+  @ApiOperation({ summary: 'Recent support tickets for dashboard drill-downs' })
+  @ApiOkResponse({ description: 'Recent support tickets' })
   @Get('support')
   listSupportTickets() {
     return this.dashboardService.listSupportTickets();
   }
 
-  @ApiOperation({ summary: 'Audit log list (optional)' })
-  @ApiOkResponse({ description: 'Audit logs placeholder', schema: { example: [] } })
+  @ApiOperation({ summary: 'Recent audit log entries for dashboard drill-downs' })
+  @ApiOkResponse({ description: 'Recent audit logs' })
   @Get('audit-log')
   listAuditLogs() {
     return this.dashboardService.listAuditLogs();
