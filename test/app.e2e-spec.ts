@@ -31,8 +31,22 @@ type MockUser = {
   passwordHash: string;
   role: Role;
   isActive: boolean;
+  isMfaEnabled: boolean;
+  mfaSecret: string | null;
+  lastMfaVerifiedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+};
+
+type MockSuperadminSession = {
+  id: string;
+  userId: string;
+  userAgent: string;
+  ipAddress: string;
+  refreshTokenId: string | null;
+  createdAt: Date;
+  lastSeenAt: Date;
+  revokedAt: Date | null;
 };
 
 type MockSupportTicket = {
@@ -72,9 +86,11 @@ class PrismaServiceMock {
   private supportTicketSeq = 1;
   private templateSeq = 1;
   private auditSeq = 1;
+  private sessionSeq = 1;
   private readonly tenants = new Map<string, MockTenant>();
   private readonly supportTickets = new Map<string, MockSupportTicket>();
   private readonly templates = new Map<string, MockTemplate>();
+  private readonly sessions = new Map<string, MockSuperadminSession>();
   private auditLogs: MockAuditLog[] = [];
   private readonly users = new Map<string, MockUser>();
   private readonly adminCreds = { email: 'admin@superadmin.com', password: 'superadmin123!' };
@@ -96,11 +112,13 @@ class PrismaServiceMock {
     this.tenants.clear();
     this.supportTickets.clear();
     this.templates.clear();
+    this.sessions.clear();
     this.auditLogs = [];
     this.tenantSeq = 1;
     this.supportTicketSeq = 1;
     this.templateSeq = 1;
     this.auditSeq = 1;
+    this.sessionSeq = 1;
   }
 
   private seedUsers() {
@@ -112,6 +130,9 @@ class PrismaServiceMock {
       passwordHash: bcrypt.hashSync(this.adminCreds.password, 10),
       role: Role.SUPER_ADMIN,
       isActive: true,
+      isMfaEnabled: false,
+      mfaSecret: null,
+      lastMfaVerifiedAt: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -122,6 +143,9 @@ class PrismaServiceMock {
       passwordHash: bcrypt.hashSync(this.staffCreds.password, 10),
       role: Role.STAFF,
       isActive: true,
+      isMfaEnabled: false,
+      mfaSecret: null,
+      lastMfaVerifiedAt: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -177,6 +201,87 @@ class PrismaServiceMock {
         return null;
       }
       return this.applySelect(user, select);
+    },
+  };
+
+  private findSession(where: { id?: string; refreshTokenId?: string | null }) {
+    if (where?.id) {
+      return this.sessions.get(where.id);
+    }
+    if (where?.refreshTokenId) {
+      return Array.from(this.sessions.values()).find((session) => session.refreshTokenId === where.refreshTokenId);
+    }
+    return undefined;
+  }
+
+  superadminSession = {
+    create: async ({ data }: { data: Partial<MockSuperadminSession> }) => {
+      const now = new Date();
+      const session: MockSuperadminSession = {
+        id: `session_${this.sessionSeq++}`,
+        userId: data.userId!,
+        userAgent: data.userAgent ?? 'Unknown',
+        ipAddress: data.ipAddress ?? 'Unknown',
+        refreshTokenId: data.refreshTokenId ?? null,
+        createdAt: now,
+        lastSeenAt: now,
+        revokedAt: null,
+      };
+      this.sessions.set(session.id, session);
+      return this.cloneRecord(session);
+    },
+    findUnique: async ({ where }: { where: { id?: string; refreshTokenId?: string | null } }) => {
+      const session = this.findSession(where);
+      return session ? this.cloneRecord(session) : null;
+    },
+    findMany: async ({ where = {}, orderBy }: { where?: any; orderBy?: { lastSeenAt?: 'asc' | 'desc' } } = {}) => {
+      let result = Array.from(this.sessions.values());
+      if (where.userId) {
+        result = result.filter((session) => session.userId === where.userId);
+      }
+      if (Object.prototype.hasOwnProperty.call(where, 'revokedAt')) {
+        result = result.filter((session) => session.revokedAt === where.revokedAt);
+      }
+      if (orderBy?.lastSeenAt) {
+        result = result.sort((a, b) =>
+          orderBy.lastSeenAt === 'asc'
+            ? a.lastSeenAt.getTime() - b.lastSeenAt.getTime()
+            : b.lastSeenAt.getTime() - a.lastSeenAt.getTime(),
+        );
+      }
+      return result.map((session) => this.cloneRecord(session));
+    },
+    findFirst: async ({ where = {}, orderBy }: { where?: any; orderBy?: { lastSeenAt?: 'asc' | 'desc' } } = {}) => {
+      const [session] = await this.superadminSession.findMany({ where, orderBy });
+      return session ?? null;
+    },
+    update: async ({ where, data }: { where: { id: string }; data: Partial<MockSuperadminSession> }) => {
+      const session = this.sessions.get(where.id);
+      if (!session) {
+        throw new Error('Session not found');
+      }
+      if (Object.prototype.hasOwnProperty.call(data, 'lastSeenAt')) {
+        session.lastSeenAt = data.lastSeenAt as Date;
+      }
+      if (Object.prototype.hasOwnProperty.call(data, 'revokedAt')) {
+        session.revokedAt = (data.revokedAt as Date | null) ?? null;
+      }
+      return this.cloneRecord(session);
+    },
+    updateMany: async ({ where = {}, data }: { where?: any; data: Partial<MockSuperadminSession> }) => {
+      const sessions = await this.superadminSession.findMany({ where });
+      sessions.forEach((session) => {
+        const existing = this.sessions.get(session.id);
+        if (existing && Object.prototype.hasOwnProperty.call(data, 'revokedAt')) {
+          existing.revokedAt = (data.revokedAt as Date | null) ?? null;
+        }
+      });
+      return { count: sessions.length };
+    },
+    deleteMany: async ({ where = {} }: { where?: any } = {}) => {
+      const sessions = await this.superadminSession.findMany({ where });
+      sessions.forEach((session) => this.sessions.delete(session.id));
+      return { count: sessions.length };
     },
   };
 
@@ -542,7 +647,7 @@ describe('SuperAdmin Backend (e2e)', () => {
       .post('/api/v1/auth/login')
       .send(prismaMock.getAdminCredentials())
       .expect(200);
-    return response.body as { access_token: string; user: { id: string } };
+    return response.body as { access_token: string; refresh_token: string; user: { id: string } };
   };
 
   const createTenant = async (token: string, overrides?: { name?: string; email?: string }) => {
@@ -842,22 +947,22 @@ describe('SuperAdmin Backend (e2e)', () => {
   // ============================================
 
   describe('Auth Refresh Token', () => {
-    it('POST /auth/refresh issues a new access token', async () => {
-      const { access_token } = await loginAsSuperAdmin();
+    it('POST /auth/refresh accepts the refresh token body and issues a new access token', async () => {
+      const { refresh_token } = await loginAsSuperAdmin();
 
       const response = await request(httpServer)
         .post('/api/v1/auth/refresh')
-        .set('Authorization', `Bearer ${access_token}`)
+        .send({ refreshToken: refresh_token })
         .expect(200);
 
       expect(response.body).toHaveProperty('access_token');
       expect(typeof response.body.access_token).toBe('string');
     });
 
-    it('POST /auth/refresh rejects missing token', async () => {
+    it('POST /auth/refresh rejects missing refresh token body', async () => {
       await request(httpServer)
         .post('/api/v1/auth/refresh')
-        .expect(401);
+        .expect(400);
     });
   });
 

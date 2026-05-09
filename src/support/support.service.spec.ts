@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { SupportService } from './support.service';
 import { SupportRepository } from './support.repository';
 import { AuditService } from '../audit/audit.service';
-import { AuditEventType, SupportStatus } from '@prisma/client';
+import { AuditEventType, SupportPriority, SupportStatus } from '@prisma/client';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('SupportService', () => {
@@ -30,8 +30,20 @@ describe('SupportService', () => {
     service = moduleRef.get(SupportService);
   });
 
+  const ticket = {
+    id: 'ticket_1',
+    tenantId: 'tenant_1',
+    subject: 'Help',
+    message: 'Broken',
+    status: SupportStatus.OPEN,
+    priority: SupportPriority.MEDIUM,
+    assignedTo: null,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+  };
+
   it('creates support tickets and logs events', async () => {
-    repository.create.mockResolvedValue({ id: 'ticket_1', tenantId: 'tenant_1', subject: 'Help', status: SupportStatus.OPEN });
+    repository.create.mockResolvedValue(ticket);
 
     const result = await service.createTicket({ tenantId: 'tenant_1', subject: 'Help', message: 'Broken', priority: undefined });
 
@@ -46,7 +58,7 @@ describe('SupportService', () => {
   });
 
   it('prevents invalid status regressions', async () => {
-    repository.findById.mockResolvedValue({ id: 'ticket_1', status: SupportStatus.RESOLVED, tenantId: 'tenant_1' });
+    repository.findById.mockResolvedValue({ ...ticket, status: SupportStatus.RESOLVED });
 
     await expect(
       service.updateStatus('ticket_1', { status: SupportStatus.IN_PROGRESS }),

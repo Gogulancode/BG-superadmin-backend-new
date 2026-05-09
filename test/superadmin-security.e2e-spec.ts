@@ -11,6 +11,20 @@ import { authenticator } from 'otplib';
  * ✅ Logout with session revocation
  */
 
+type TestUser = {
+  id: string;
+  email: string;
+  name: string;
+  passwordHash: string;
+  role: string;
+  isActive: boolean;
+  isMfaEnabled: boolean;
+  mfaSecret: string | null;
+  lastMfaVerifiedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 // Helper to create fresh state for each test
 const createTestState = () => {
   const users = new Map<string, any>();
@@ -22,8 +36,8 @@ const createTestState = () => {
     users,
     sessions,
     cache,
-    createUser: (overrides = {}) => {
-      const user = {
+    createUser: (overrides: Partial<TestUser> = {}) => {
+      const user: TestUser = {
         id: `user-${Date.now()}-${Math.random()}`,
         email: 'superadmin@test.com',
         name: 'Super Admin',

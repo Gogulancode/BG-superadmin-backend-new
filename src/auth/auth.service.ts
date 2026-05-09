@@ -9,6 +9,15 @@ import { SessionService } from './sessions/session.service';
 import { MfaService } from './mfa/mfa.service';
 import { randomUUID } from 'node:crypto';
 
+type RefreshTokenPayload = {
+  sub: string;
+  email: string;
+  role: Role;
+  sessionId?: string;
+  refreshTokenId?: string;
+  type?: string;
+};
+
 export interface LoginContext {
   userAgent: string;
   ipAddress: string;
@@ -105,35 +114,42 @@ export class AuthService {
     return response;
   }
 
-  async refreshToken(user: { userId: string; email: string; role: Role; sessionId?: string; refreshTokenId?: string }) {
-    // Check if session is still valid
-    if (user.refreshTokenId) {
-      const isValid = await this.sessionService.isRefreshTokenValid(user.refreshTokenId);
-      if (!isValid) {
-        throw new UnauthorizedException('Session has been revoked');
-      }
-      // Update last seen
-      await this.sessionService.touchSessionByRefreshToken(user.refreshTokenId);
+  async refreshToken(refreshToken: string) {
+    let payload: RefreshTokenPayload;
+    try {
+      payload = this.jwtService.verify<RefreshTokenPayload>(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
+    if (payload.type !== 'refresh' || !payload.refreshTokenId) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const isValid = await this.sessionService.isRefreshTokenValid(payload.refreshTokenId);
+    if (!isValid) {
+      throw new UnauthorizedException('Session has been revoked');
+    }
+    await this.sessionService.touchSessionByRefreshToken(payload.refreshTokenId);
+
     const dbUser = await this.prisma.user.findUnique({
-      where: { id: user.userId },
+      where: { id: payload.sub },
     });
 
     if (!dbUser || !dbUser.isActive || dbUser.role !== Role.SUPER_ADMIN) {
       throw new UnauthorizedException('Invalid user');
     }
 
-    const payload = { 
+    const accessPayload = { 
       email: dbUser.email, 
       sub: dbUser.id, 
       role: dbUser.role,
-      sessionId: user.sessionId,
-      refreshTokenId: user.refreshTokenId,
+      sessionId: payload.sessionId,
+      refreshTokenId: payload.refreshTokenId,
     };
 
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.jwtService.sign(accessPayload),
     };
   }
 

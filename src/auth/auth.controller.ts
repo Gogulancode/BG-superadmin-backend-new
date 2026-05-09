@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { MfaLoginDto } from './mfa/dto/mfa.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -90,7 +91,6 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Refresh access token' })
-  @ApiBearerAuth('JWT-auth')
   @ApiOkResponse({
     description: 'New access token',
     schema: {
@@ -100,11 +100,10 @@ export class AuthController {
     },
   })
   @ApiUnauthorizedResponse({ description: 'Invalid or expired token, or session revoked' })
-  @UseGuards(JwtAuthGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(@Request() req: any) {
-    return this.authService.refreshToken(req.user);
+  async refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refreshToken(dto.refreshToken);
   }
 
   @ApiOperation({ summary: 'Logout and revoke current session' })

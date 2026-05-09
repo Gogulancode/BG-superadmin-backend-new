@@ -16,6 +16,7 @@ import { SessionModule } from './sessions/session.module';
 import { SessionService } from './sessions/session.service';
 import { SessionController } from './sessions/session.controller';
 import { PasswordPolicyService } from './services/password-policy.service';
+import { requireJwtSecret } from '../config/env';
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { PasswordPolicyService } from './services/password-policy.service';
     PassportModule,
     CacheModule.register(),
     JwtModule.register({
-      secret: process.env.JWT_SECRET,
+      secret: requireJwtSecret(),
       signOptions: { expiresIn: '1h' },
     }),
   ],

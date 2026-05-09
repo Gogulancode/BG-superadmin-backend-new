@@ -10,10 +10,19 @@ import { ReportsModule } from './reports/reports.module';
 import { OpsModule } from './ops/ops.module';
 import { SettingsModule } from './settings/settings.module';
 import { UsersModule } from './users/users.module';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { optionalNumberEnv } from './config/env';
 
 @Module({
   imports: [
     PrismaModule,
+    ThrottlerModule.forRoot([
+      {
+        ttl: optionalNumberEnv('THROTTLE_TTL_MS', 60_000),
+        limit: optionalNumberEnv('THROTTLE_LIMIT', 120),
+      },
+    ]),
     AuthModule,
     TenantsModule,
     DashboardModule,
@@ -26,6 +35,11 @@ import { UsersModule } from './users/users.module';
     UsersModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

@@ -344,7 +344,7 @@ describe('Data Integrity & Tenant Isolation - Superadmin Backend', () => {
       });
 
       it('deleted tenant can be restored by superadmin', () => {
-        let tenant = { id: 'tenant-123', deletedAt: new Date() };
+        let tenant: { id: string; deletedAt: Date | null } = { id: 'tenant-123', deletedAt: new Date() };
 
         const restoreTenant = (tenantId: string) => {
           tenant = { id: tenantId, deletedAt: null };

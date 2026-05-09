@@ -4,13 +4,14 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { MfaService } from './mfa.service';
 import { MfaController } from './mfa.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { requireJwtSecret } from '../../config/env';
 
 @Module({
   imports: [
     PrismaModule,
     CacheModule.register(),
     JwtModule.register({
-      secret: process.env.JWT_SECRET,
+      secret: requireJwtSecret(),
       signOptions: { expiresIn: '1h' },
     }),
   ],
