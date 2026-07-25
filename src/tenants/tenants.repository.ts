@@ -7,9 +7,25 @@ import { TenantQueryDto } from './dto/tenant-query.dto';
 export class TenantsRepository {
   constructor(private prisma: PrismaService) {}
 
-  async createTenant(name: string, email: string) {
+  async createTenant(data: {
+    name: string;
+    email: string;
+    planCode?: string;
+    subscriptionStatus?: SubscriptionStatus;
+  }) {
+    const subscriptionStatus = data.subscriptionStatus ?? SubscriptionStatus.TRIAL;
+    const trialEndsAt = subscriptionStatus === SubscriptionStatus.TRIAL
+      ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+      : undefined;
+
     return this.prisma.tenant.create({
-      data: { name, email },
+      data: {
+        name: data.name,
+        email: data.email,
+        planCode: data.planCode,
+        subscriptionStatus,
+        trialEndsAt,
+      },
     });
   }
 

@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SubscriptionStatus, TenantStatus } from '@prisma/client';
 
 export class TenantResponseDto {
@@ -40,4 +40,20 @@ export class TenantResponseDto {
 
   @ApiProperty({ example: '2025-05-15T08:20:00.000Z', nullable: true })
   lastActiveAt?: Date | null;
+
+  @ApiPropertyOptional({
+    description: 'Safe tenant activation details returned after create',
+    example: {
+      adminEmail: 'owner@acme.com',
+      loginUrl: 'https://tenant.example.com/login',
+      onboardingUrl: 'https://tenant.example.com/register?email=owner%40acme.com',
+      passwordDelivery: 'Tenant admin creates their own password through the tenant onboarding flow.',
+    },
+  })
+  provisioning?: {
+    adminEmail: string;
+    loginUrl: string;
+    onboardingUrl: string;
+    passwordDelivery: string;
+  };
 }

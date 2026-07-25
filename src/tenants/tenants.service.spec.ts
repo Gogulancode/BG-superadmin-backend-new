@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { TenantsService } from './tenants.service';
 import { TenantsRepository } from './tenants.repository';
-import { TenantStatus } from '@prisma/client';
+import { SubscriptionStatus, TenantStatus } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 
 describe('TenantsService.getTenantStats', () => {
@@ -19,6 +19,7 @@ describe('TenantsService.getTenantStats', () => {
           provide: TenantsRepository,
           useValue: {
             getUsageStats: jest.fn(),
+            createTenant: jest.fn(),
           },
         },
         { provide: AuditService, useValue: auditService },
@@ -27,6 +28,45 @@ describe('TenantsService.getTenantStats', () => {
 
     service = moduleRef.get(TenantsService);
     repository = moduleRef.get(TenantsRepository) as jest.Mocked<TenantsRepository>;
+  });
+
+  it('creates tenants with safe provisioning details', async () => {
+    const createdAt = new Date('2026-01-01T00:00:00.000Z');
+    repository.createTenant.mockResolvedValue({
+      id: 'tenant_1',
+      name: 'Acme Corp',
+      email: 'owner@acme.com',
+      status: TenantStatus.ACTIVE,
+      subscriptionStatus: SubscriptionStatus.TRIAL,
+      planCode: 'STARTER',
+      renewalDate: null,
+      trialEndsAt: null,
+      isOnboarded: false,
+      onboardedAt: null,
+      usageSummary: null,
+      lastActiveAt: null,
+      createdAt,
+      updatedAt: createdAt,
+    });
+
+    const result = await service.createTenant({
+      name: 'Acme Corp',
+      email: 'owner@acme.com',
+      planCode: 'STARTER',
+    });
+
+    expect(repository.createTenant).toHaveBeenCalledWith({
+      name: 'Acme Corp',
+      email: 'owner@acme.com',
+      planCode: 'STARTER',
+      subscriptionStatus: undefined,
+    });
+    expect(result.provisioning).toMatchObject({
+      adminEmail: 'owner@acme.com',
+      loginUrl: expect.stringContaining('/login'),
+      onboardingUrl: expect.stringContaining('/register?email=owner%40acme.com'),
+    });
+    expect(result.provisioning.passwordDelivery).toContain('No temporary password');
   });
 
   it('returns fallback defaults when usageSummary is missing', async () => {

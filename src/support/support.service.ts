@@ -16,8 +16,15 @@ export class SupportService {
     private auditService: AuditService,
   ) {}
 
-  listTickets(filters: SupportQueryDto) {
-    return this.supportRepository.findAll(filters);
+  async listTickets(filters: SupportQueryDto) {
+    const response = await this.supportRepository.findAll(filters);
+    if (Array.isArray(response)) {
+      return response.map((ticket) => this.toResponse(ticket));
+    }
+    return {
+      ...response,
+      data: response.data.map((ticket) => this.toResponse(ticket)),
+    };
   }
 
   async getTicket(id: string) {
@@ -25,11 +32,21 @@ export class SupportService {
     if (!ticket) {
       throw new NotFoundException('Support ticket not found');
     }
-    return ticket;
+    return this.toResponse(ticket);
   }
 
   async createTicket(dto: CreateSupportTicketDto) {
-    const ticket = await this.supportRepository.create(dto);
+    const message = dto.message ?? dto.description;
+    if (!message) {
+      throw new BadRequestException('Support ticket message is required');
+    }
+
+    const ticket = await this.supportRepository.create({
+      tenantId: dto.tenantId,
+      subject: dto.subject,
+      message,
+      priority: dto.priority,
+    });
     await this.auditService.logEvent({
       eventType: AuditEventType.SUPPORT_TICKET_CREATED,
       actor: 'SUPER_ADMIN',
@@ -39,13 +56,13 @@ export class SupportService {
         subject: ticket.subject,
       },
     });
-    return ticket;
+    return this.toResponse(ticket);
   }
 
   async updateStatus(id: string, dto: UpdateSupportStatusDto) {
     const ticket = await this.getTicket(id);
     this.ensureValidTransition(ticket.status, dto.status);
-    const updated = await this.supportRepository.updateStatus(id, dto.status);
+    const updated = await this.supportRepository.updateStatus(id, dto.status, dto.assignee);
     await this.auditService.logEvent({
       eventType: AuditEventType.SUPPORT_TICKET_STATUS_CHANGED,
       actor: 'SUPER_ADMIN',
@@ -54,9 +71,11 @@ export class SupportService {
         ticketId: ticket.id,
         from: ticket.status,
         to: dto.status,
+        assignedTo: dto.assignee,
+        note: dto.note,
       },
     });
-    return updated;
+    return this.toResponse(updated);
   }
 
   async assignAgent(id: string, dto: AssignAgentDto) {
@@ -72,7 +91,7 @@ export class SupportService {
         assignedTo: dto.assignedTo,
       },
     });
-    return updated;
+    return this.toResponse(updated);
   }
 
   private ensureValidTransition(current: SupportStatus, next: SupportStatus) {
@@ -84,5 +103,15 @@ export class SupportService {
     if (nextIndex < currentIndex) {
       throw new BadRequestException('Cannot revert support ticket status');
     }
+  }
+
+  private toResponse(ticket: any) {
+    return {
+      ...ticket,
+      tenantName: ticket.tenant?.name ?? ticket.tenantName ?? ticket.tenantId,
+      description: ticket.message,
+      assignee: ticket.assignedTo ?? undefined,
+      comments: ticket.comments ?? [],
+    };
   }
 }

@@ -13,9 +13,16 @@ export class CreateSupportTicketDto {
   subject: string;
 
   @ApiProperty({ description: 'Detailed message', example: 'Dashboard throws 500 when loading metrics' })
+  @IsOptional()
   @IsString()
   @MinLength(5)
-  message: string;
+  message?: string;
+
+  @ApiPropertyOptional({ description: 'UI alias for detailed message' })
+  @IsOptional()
+  @IsString()
+  @MinLength(5)
+  description?: string;
 
   @ApiPropertyOptional({ enum: SupportPriority, default: SupportPriority.MEDIUM })
   @IsOptional()

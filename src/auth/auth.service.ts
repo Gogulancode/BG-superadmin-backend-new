@@ -130,7 +130,6 @@ export class AuthService {
     if (!isValid) {
       throw new UnauthorizedException('Session has been revoked');
     }
-    await this.sessionService.touchSessionByRefreshToken(payload.refreshTokenId);
 
     const dbUser = await this.prisma.user.findUnique({
       where: { id: payload.sub },
@@ -140,16 +139,23 @@ export class AuthService {
       throw new UnauthorizedException('Invalid user');
     }
 
+    const refreshTokenId = randomUUID();
+    const session = await this.sessionService.rotateRefreshToken(payload.refreshTokenId, refreshTokenId);
+    if (!session) {
+      throw new UnauthorizedException('Session has been revoked');
+    }
+
     const accessPayload = { 
       email: dbUser.email, 
       sub: dbUser.id, 
       role: dbUser.role,
-      sessionId: payload.sessionId,
-      refreshTokenId: payload.refreshTokenId,
+      sessionId: session.id,
+      refreshTokenId,
     };
 
     return {
       access_token: this.jwtService.sign(accessPayload),
+      refresh_token: this.jwtService.sign({ ...accessPayload, type: 'refresh' }, { expiresIn: '7d' }),
     };
   }
 

@@ -16,6 +16,7 @@ describe('SupportService', () => {
       findById: jest.fn(),
       create: jest.fn(),
       updateStatus: jest.fn(),
+      assignAgent: jest.fn(),
     } as any;
     auditService = { logEvent: jest.fn() };
 
@@ -40,14 +41,20 @@ describe('SupportService', () => {
     assignedTo: null,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    tenant: { name: 'Tenant One' },
   };
 
   it('creates support tickets and logs events', async () => {
     repository.create.mockResolvedValue(ticket);
 
-    const result = await service.createTicket({ tenantId: 'tenant_1', subject: 'Help', message: 'Broken', priority: undefined });
+    const result = await service.createTicket({ tenantId: 'tenant_1', subject: 'Help', description: 'Broken', priority: undefined });
 
-    expect(repository.create).toHaveBeenCalled();
+    expect(repository.create).toHaveBeenCalledWith({
+      tenantId: 'tenant_1',
+      subject: 'Help',
+      message: 'Broken',
+      priority: undefined,
+    });
     expect(auditService.logEvent).toHaveBeenCalledWith({
       eventType: AuditEventType.SUPPORT_TICKET_CREATED,
       actor: 'SUPER_ADMIN',
@@ -55,14 +62,33 @@ describe('SupportService', () => {
       metadata: expect.objectContaining({ ticketId: 'ticket_1' }),
     });
     expect(result.id).toBe('ticket_1');
+    expect(result.tenantName).toBe('Tenant One');
+    expect(result.description).toBe('Broken');
+  });
+
+  it('returns paginated ticket lists in UI-friendly shape', async () => {
+    repository.findAll.mockResolvedValue({
+      data: [ticket],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+      totalPages: 1,
+    });
+
+    const result = await service.listTickets({ page: 1, pageSize: 20 });
+
+    expect(result.total).toBe(1);
+    expect(result.data[0]).toMatchObject({
+      tenantName: 'Tenant One',
+      description: 'Broken',
+      assignee: undefined,
+    });
   });
 
   it('prevents invalid status regressions', async () => {
     repository.findById.mockResolvedValue({ ...ticket, status: SupportStatus.RESOLVED });
 
-    await expect(
-      service.updateStatus('ticket_1', { status: SupportStatus.IN_PROGRESS }),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.updateStatus('ticket_1', { status: SupportStatus.IN_PROGRESS })).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('throws when ticket missing', async () => {

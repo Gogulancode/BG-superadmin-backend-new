@@ -74,6 +74,28 @@ export class SessionService {
   }
 
   /**
+   * Rotate refresh token ID after a successful refresh so an old refresh token
+   * cannot be replayed indefinitely.
+   */
+  async rotateRefreshToken(refreshTokenId: string, nextRefreshTokenId: string) {
+    const session = await this.prisma.superadminSession.findUnique({
+      where: { refreshTokenId },
+    });
+
+    if (!session || session.revokedAt) {
+      return null;
+    }
+
+    return this.prisma.superadminSession.update({
+      where: { id: session.id },
+      data: {
+        refreshTokenId: nextRefreshTokenId,
+        lastSeenAt: new Date(),
+      },
+    });
+  }
+
+  /**
    * Check if a session is valid (not revoked)
    */
   async isSessionValid(sessionId: string): Promise<boolean> {

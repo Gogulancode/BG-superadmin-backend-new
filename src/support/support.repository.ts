@@ -31,6 +31,12 @@ export class SupportRepository {
     if (filters.status) {
       where.status = filters.status;
     }
+    if (filters.priority) {
+      where.priority = filters.priority;
+    }
+    if (filters.assignee) {
+      where.assignedTo = filters.assignee;
+    }
     if (filters.search) {
       where.OR = [
         { subject: { contains: filters.search, mode: 'insensitive' } },
@@ -38,20 +44,53 @@ export class SupportRepository {
       ];
     }
 
-    return this.prisma.supportTicket.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
+    if (!filters.page && !filters.pageSize) {
+      return this.prisma.supportTicket.findMany({
+        where,
+        include: { tenant: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    const page = filters.page ?? 1;
+    const pageSize = filters.pageSize ?? 20;
+    const skip = (page - 1) * pageSize;
+
+    const [data, total] = await Promise.all([
+      this.prisma.supportTicket.findMany({
+        where,
+        include: { tenant: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.supportTicket.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
 
   async findById(id: string) {
-    return this.prisma.supportTicket.findUnique({ where: { id } });
+    return this.prisma.supportTicket.findUnique({
+      where: { id },
+      include: { tenant: { select: { name: true } } },
+    });
   }
 
-  async updateStatus(id: string, status: SupportStatus) {
+  async updateStatus(id: string, status: SupportStatus, assignedTo?: string) {
     return this.prisma.supportTicket.update({
       where: { id },
-      data: { status },
+      data: {
+        status,
+        assignedTo,
+      },
+      include: { tenant: { select: { name: true } } },
     });
   }
 
@@ -59,6 +98,7 @@ export class SupportRepository {
     return this.prisma.supportTicket.update({
       where: { id },
       data: { assignedTo },
+      include: { tenant: { select: { name: true } } },
     });
   }
 }

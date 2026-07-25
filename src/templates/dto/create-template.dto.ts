@@ -1,11 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TemplateType } from '@prisma/client';
-import { IsBoolean, IsEnum, IsObject, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsNumber, IsObject, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateTemplateDto {
-  @ApiProperty({ enum: TemplateType, example: TemplateType.METRIC })
+  @ApiPropertyOptional({ enum: TemplateType, example: TemplateType.METRIC })
+  @IsOptional()
   @IsEnum(TemplateType)
-  type: TemplateType;
+  type?: TemplateType;
 
   @ApiProperty({ description: 'Template display name', example: 'Weekly Revenue Metric' })
   @IsString()
@@ -17,9 +18,40 @@ export class CreateTemplateDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ description: 'JSON payload describing template structure', example: { fields: ['amount', 'notes'] } })
+  @ApiPropertyOptional({ description: 'Template scope supplied by the web UI', example: 'GLOBAL' })
+  @IsOptional()
+  @IsString()
+  scope?: string;
+
+  @ApiPropertyOptional({ description: 'Template status supplied by the web UI', example: 'ACTIVE' })
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @ApiPropertyOptional({ description: 'Template category', example: 'Revenue' })
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @ApiPropertyOptional({ description: 'Template cadence', example: 'WEEKLY' })
+  @IsOptional()
+  @IsString()
+  frequency?: string;
+
+  @ApiPropertyOptional({ description: 'Template target value', example: 100000 })
+  @IsOptional()
+  @IsNumber()
+  targetValue?: number;
+
+  @ApiPropertyOptional({ description: 'Metric schema fields configured from Superadmin' })
+  @IsOptional()
+  @IsArray()
+  metricSchema?: Record<string, any>[];
+
+  @ApiPropertyOptional({ description: 'JSON payload describing template structure', example: { fields: ['amount', 'notes'] } })
+  @IsOptional()
   @IsObject()
-  payload: Record<string, any>;
+  payload?: Record<string, any>;
 
   @ApiPropertyOptional({ description: 'Whether template is active', default: true })
   @IsOptional()

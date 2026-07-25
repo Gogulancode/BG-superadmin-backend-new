@@ -92,10 +92,11 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiOkResponse({
-    description: 'New access token',
+    description: 'Rotated access and refresh tokens',
     schema: {
       example: {
         access_token: 'new.jwt.token.here',
+        refresh_token: 'new.refresh.jwt.token.here',
       },
     },
   })
