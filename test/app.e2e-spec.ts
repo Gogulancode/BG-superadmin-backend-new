@@ -7,7 +7,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
-process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-jwt-secret';
+process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'superadmin-e2e-test-secret-32-characters-minimum';
 
 type MockTenant = {
   id: string;

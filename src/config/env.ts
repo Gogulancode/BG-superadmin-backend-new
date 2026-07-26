@@ -7,7 +7,24 @@ export function requireEnv(name: string): string {
 }
 
 export function requireJwtSecret(): string {
-  return requireEnv('JWT_SECRET');
+  const value = requireEnv('JWT_SECRET');
+  const weakValues = new Set([
+    'secret',
+    'jwt-secret',
+    'test-jwt-secret',
+    'super-secret',
+    'replace-with-at-least-32-random-characters',
+  ]);
+
+  if (value.length < 32) {
+    throw new Error('JWT_SECRET must be at least 32 characters long');
+  }
+
+  if (weakValues.has(value.toLowerCase())) {
+    throw new Error('JWT_SECRET must be a unique random value, not a placeholder');
+  }
+
+  return value;
 }
 
 export function optionalNumberEnv(name: string, fallback: number): number {
